@@ -1,0 +1,22 @@
+{
+    "name": "applab/qnas",
+    "description": "Qatar National Authentication System",
+    "type": "support-package",
+    "authors": [
+        {
+            "name": "Abdul Muhaimin",
+            "email": "manu@applab.qa"
+        }
+    ],
+
+    "require": {
+        "php": ">=7.2"
+
+    },
+    "autoload": {
+        "psr-4": {
+            "Applab\\QNas\\": "src/"
+        }
+    },
+    "minimum-stability": "dev"
+}
