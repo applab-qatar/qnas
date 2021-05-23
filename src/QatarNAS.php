@@ -9,14 +9,15 @@ use Applab\NasSdk\Utils\SamlSdkUtils;
 
 class QatarNAS
 {
-    public function __construct()
+    private function init()
     {
         session_start();
-        $baseDir = dirname(dirname(dirname(__FILE__)));
+        $baseDir = dirname(dirname(dirname(dirname(__DIR__))));
         require_once($baseDir."/qnas_config/config.php");
     }
     public static function sso()
     {
+        self::init();
         // Create SAML config and SingleSignOnClient instances
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
         $singleSignOnClient = new SingleSignOnClient($samlConfig);
@@ -35,6 +36,7 @@ class QatarNAS
 
     public static function sls()
     {
+        self::init();
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
         $singleLogoutClient = new SingleLogoutClient($samlConfig);
 
@@ -100,6 +102,7 @@ class QatarNAS
 
     public static function attr()
     {
+        self::init();
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
         $attributeQueryClient = new AttributeQueryClient($samlConfig);
         if (isset($_GET["clear"])) {
@@ -150,6 +153,7 @@ class QatarNAS
 
     public static function acs()
     {
+        self::init();
         if (isset($_REQUEST["SAMLResponse"])) {
             // Decode SAMLResponse Base64 value
             $resp = base64_decode($_REQUEST["SAMLResponse"]);

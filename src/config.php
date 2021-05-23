@@ -24,7 +24,7 @@
 /**
  * Configuration file for SAML PHP Sample SP
  */
-define("CONFIG_ROOT","qnas_config/");
+define("CONFIG_ROOT",__DIR__."/");
 define("SP_METADATA_FILE", "sp-metadata.xml");
 define("IDP_METADATA_FILE", "idp-metadata.xml");
 define("SP_PRIV_KEY_FILE", "sp-signature.pem");
