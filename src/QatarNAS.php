@@ -14,26 +14,65 @@ class QatarNAS
         $baseDir = dirname(dirname(dirname(dirname(__DIR__))));
         require_once($baseDir."/qnas_config/config.php");
     }
-    public static function sso($authMethod = [])
+    public static function singleSignOnClient($lang,$authMethod = [])
     {
         self::init();
         // Create SAML config and SingleSignOnClient instances
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
         $singleSignOnClient = new SingleSignOnClient($samlConfig);
 
-        $samlRequest = $singleSignOnClient->generateRequest($_GET['lang'], $authMethod);
+        $samlRequest = $singleSignOnClient->generateRequest($lang, $authMethod);
 
         // Get the Base64 value of the SAML AuthnRequest message for the submission
         $xmlBase64 = base64_encode($samlRequest->getRequest());
 
         // Store the SAML request ID for response validation
         $_SESSION["user"]["resp_id"] = $samlRequest->getId();
-        //echo $samlConfig->getSsoPostUrl();exit;
-        //var_dump($_SESSION);exit;
         return include('templates/sso.php');
     }
 
-    public static function sls()
+    public static function singleSignOnResponse()
+    {
+        self::init();
+        if (isset($_REQUEST["SAMLResponse"])) {
+            // Decode SAMLResponse Base64 value
+            $resp = base64_decode($_REQUEST["SAMLResponse"]);
+            try {
+                // Create SAML config and SingleSignOnClient instances
+                $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
+                $singleSignOnClient = new SingleSignOnClient($samlConfig);
+
+                // Process the SAML Response value; verify against the AuthnRequest ID value
+                $samlCredential = $singleSignOnClient->processResponse($resp, $_SESSION["user"]["resp_id"]);
+
+                unset($_SESSION["user"]["resp_id"]);
+
+                // Check if the authentication was successful or not
+                if ($samlCredential->isSuccess()) {
+                    $_SESSION["user"]["loggedin"] = true;
+                    $_SESSION["user"]["subject"] = $samlCredential->getNameId();
+                    $_SESSION["user"]["authn_method"] = $samlCredential->getAuthMethod();
+                    $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
+                    $_SESSION["user"]["attributes"] = $samlCredential->getAttributes();
+                    if ($samlCredential->getAuthMethod() == "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI") {
+                        $_SESSION["user"]["csnToken"] = $samlCredential->getAttributeValue("UserCardSerialNumberToken");
+                        $_SESSION["user"]["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
+                        $_SESSION["user"]["idpUrl"] = $samlConfig->getIdpBaseUrl();
+                    }
+                    SamlSdkUtils::redirect('../');
+                } else {
+                    SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
+                }
+            } catch (Exception $e) {
+                SamlSdkUtils::redirectWithError('../', $e->getMessage());
+            }
+        } else {
+            SamlSdkUtils::redirect('../', "HTTP GET method is not supported");
+        }
+    }
+
+
+    public static function singleLogoutClient()
     {
         self::init();
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
@@ -99,7 +138,7 @@ class QatarNAS
         }
     }
 
-    public static function attr()
+    public static function attributeQueryClient()
     {
         self::init();
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
@@ -147,46 +186,6 @@ class QatarNAS
                     SamlSdkUtils::redirectWithError("../", "Error while getting attributes: ".$response);
                 }
             }
-        }
-    }
-
-    public static function acs()
-    {
-        self::init();
-        if (isset($_REQUEST["SAMLResponse"])) {
-            // Decode SAMLResponse Base64 value
-            $resp = base64_decode($_REQUEST["SAMLResponse"]);
-            try {
-                // Create SAML config and SingleSignOnClient instances
-                $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
-                $singleSignOnClient = new SingleSignOnClient($samlConfig);
-
-                // Process the SAML Response value; verify against the AuthnRequest ID value
-                $samlCredential = $singleSignOnClient->processResponse($resp, $_SESSION["user"]["resp_id"]);
-
-                unset($_SESSION["user"]["resp_id"]);
-
-                // Check if the authentication was successful or not
-                if ($samlCredential->isSuccess()) {
-                    $_SESSION["user"]["loggedin"] = true;
-                    $_SESSION["user"]["subject"] = $samlCredential->getNameId();
-                    $_SESSION["user"]["authn_method"] = $samlCredential->getAuthMethod();
-                    $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
-                    $_SESSION["user"]["attributes"] = $samlCredential->getAttributes();
-                    if ($samlCredential->getAuthMethod() == "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI") {
-                        $_SESSION["user"]["csnToken"] = $samlCredential->getAttributeValue("UserCardSerialNumberToken");
-                        $_SESSION["user"]["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
-                        $_SESSION["user"]["idpUrl"] = $samlConfig->getIdpBaseUrl();
-                    }
-                    SamlSdkUtils::redirect('../');
-                } else {
-                    SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
-                }
-            } catch (Exception $e) {
-                SamlSdkUtils::redirectWithError('../', $e->getMessage());
-            }
-        } else {
-            SamlSdkUtils::redirect('../', "HTTP GET method is not supported");
         }
     }
 }
