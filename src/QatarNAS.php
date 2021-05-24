@@ -11,7 +11,6 @@ class QatarNAS
 {
     private function init()
     {
-        session_start();
         $baseDir = dirname(dirname(dirname(dirname(__DIR__))));
         require_once($baseDir."/qnas_config/config.php");
     }
