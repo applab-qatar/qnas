@@ -21,7 +21,7 @@ class QatarNAS
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
         $singleSignOnClient = new SingleSignOnClient($samlConfig);
 
-        $samlRequest = $singleSignOnClient->generateRequest($_GET['lang'], array());
+        $samlRequest = $singleSignOnClient->generateRequest($_GET['lang'], array('urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI'));
 
         // Get the Base64 value of the SAML AuthnRequest message for the submission
         $xmlBase64 = base64_encode($samlRequest->getRequest());
