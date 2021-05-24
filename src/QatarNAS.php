@@ -14,14 +14,14 @@ class QatarNAS
         $baseDir = dirname(dirname(dirname(dirname(__DIR__))));
         require_once($baseDir."/qnas_config/config.php");
     }
-    public static function sso()
+    public static function sso($authMethod = [])
     {
         self::init();
         // Create SAML config and SingleSignOnClient instances
         $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
         $singleSignOnClient = new SingleSignOnClient($samlConfig);
 
-        $samlRequest = $singleSignOnClient->generateRequest($_GET['lang'], array('urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI'));
+        $samlRequest = $singleSignOnClient->generateRequest($_GET['lang'], $authMethod);
 
         // Get the Base64 value of the SAML AuthnRequest message for the submission
         $xmlBase64 = base64_encode($samlRequest->getRequest());
