@@ -1,0 +1,1 @@
+<saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" Name="<NAME>" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri" />

@@ -1,25 +1,25 @@
 <?php
 namespace Applab\QNas;
 
-use Applab\NasSdk\AttributeQueryClient;
-use Applab\NasSdk\SamlConfig;
-use Applab\NasSdk\SingleSignOnClient;
-use Applab\NasSdk\SingleLogoutClient;
-use Applab\NasSdk\Utils\SamlSdkUtils;
-
 class QatarNAS
 {
     private function init()
     {
         $baseDir = dirname(dirname(dirname(dirname(__DIR__))));
         require_once($baseDir."/qnas_config/config.php");
+        define("SP_SDK_ROOT", dirname(__FILE__) . "/sdk/");
+        require_once(SP_SDK_ROOT."/SamlConfig.php");
     }
+    /**
+     * PHP Sample SP - SAML authentication request
+     */
     public static function singleSignOnClient($lang,$authMethod = [])
     {
         self::init();
+        require_once(SP_SDK_ROOT."/SingleSignOnClient.php");
         // Create SAML config and SingleSignOnClient instances
-        $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
-        $singleSignOnClient = new SingleSignOnClient($samlConfig);
+        $samlConfig = new \SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
+        $singleSignOnClient = new \SingleSignOnClient($samlConfig);
 
         $samlRequest = $singleSignOnClient->generateRequest($lang, $authMethod);
 
@@ -30,17 +30,23 @@ class QatarNAS
         $_SESSION["user"]["resp_id"] = $samlRequest->getId();
         return include('templates/sso.php');
     }
-
+    /**
+     * PHP Sample SP - Assertion Consumer Service
+     */
     public static function singleSignOnResponse()
     {
         self::init();
+        require_once(SP_SDK_ROOT."/SingleSignOnClient.php");
+        /**
+         *  Processing responses
+         */
         if (isset($_REQUEST["SAMLResponse"])) {
             // Decode SAMLResponse Base64 value
             $resp = base64_decode($_REQUEST["SAMLResponse"]);
             try {
                 // Create SAML config and SingleSignOnClient instances
-                $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
-                $singleSignOnClient = new SingleSignOnClient($samlConfig);
+                $samlConfig = new \SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
+                $singleSignOnClient = new \SingleSignOnClient($samlConfig);
 
                 // Process the SAML Response value; verify against the AuthnRequest ID value
                 $samlCredential = $singleSignOnClient->processResponse($resp, $_SESSION["user"]["resp_id"]);
@@ -64,56 +70,59 @@ class QatarNAS
                     SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
                 }
             } catch (Exception $e) {
-                SamlSdkUtils::redirectWithError('../', $e->getMessage());
+                \SamlSdkUtils::redirectWithError('../', $e->getMessage());
             }
         } else {
-            SamlSdkUtils::redirect('../', "HTTP GET method is not supported");
+            \SamlSdkUtils::redirect('../', "HTTP GET method is not supported");
         }
     }
 
-
+    /**
+     * PHP Sample SP - SAML logout service
+     */
     public static function singleLogoutClient()
     {
         self::init();
-        $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
-        $singleLogoutClient = new SingleLogoutClient($samlConfig);
+        require_once(SP_SDK_ROOT."/SingleLogoutClient.php");
+        $samlConfig = new \SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
+        $singleLogoutClient = new \SingleLogoutClient($samlConfig);
 
         /**
          *  Processing of Single Logout requests/responses
          */
         if (isset($_GET["SAMLRequest"])) {
-            $request = SamlSdkUtils::computeXml($_SERVER['QUERY_STRING'], $samlConfig->getIdpCert());
-            if (!SamlSdkUtils::startsWith($request, "Error")) {
+            $request = \SamlSdkUtils::computeXml($_SERVER['QUERY_STRING'], $samlConfig->getIdpCert());
+            if (!\SamlSdkUtils::startsWith($request, "Error")) {
                 // Process the SAML LogoutRequest message
                 $response = $singleLogoutClient->generateResponse($request);
 
                 // Create the SAML LogoutResponse message
-                $location = SamlSdkUtils::computeUrl("Response",  $samlConfig->getSpPrivateKeyFile(), $samlConfig->getSlsRedirectUrl(), $response);
+                $location = \SamlSdkUtils::computeUrl("Response",  $samlConfig->getSpPrivateKeyFile(), $samlConfig->getSlsRedirectUrl(), $response);
 
                 // Perform local logout
                 unset($_SESSION["user"]);
 
                 // Perform HTTP-Redirect binging with the LogoutResponse message
-                SamlSdkUtils::redirect("$location");
+                \SamlSdkUtils::redirect("$location");
             }
         } else if (isset($_GET["SAMLResponse"])) {
-            $response = SamlSdkUtils::computeXml($_SERVER['QUERY_STRING'], $samlConfig->getIdpCert());
-            if (!SamlSdkUtils::startsWith($response, "Error")) {
+            $response = \SamlSdkUtils::computeXml($_SERVER['QUERY_STRING'], $samlConfig->getIdpCert());
+            if (!\SamlSdkUtils::startsWith($response, "Error")) {
                 try {
                     $samlCredential = $singleLogoutClient->processResponse($response, $_SESSION["user"]["resp_id"]);
                     if ($samlCredential->isSuccess()) {
                         // Clean up user session
                         unset($_SESSION["user"]["resp_id"]);
                         unset($_SESSION["user"]);
-                        SamlSdkUtils::redirect("../");
+                        \SamlSdkUtils::redirect("../");
                     } else {
-                        SamlSdkUtils::redirectWithError("../", "Logout failed on the server. Use local logout.");
+                        \SamlSdkUtils::redirectWithError("../", "Logout failed on the server. Use local logout.");
                     }
                 } catch (Exception $e) {
-                    SamlSdkUtils::redirectWithError("../", $e->getMessage());
+                    \SamlSdkUtils::redirectWithError("../", $e->getMessage());
                 }
             } else {
-                SamlSdkUtils::redirectWithError("../", $response);
+                \SamlSdkUtils::redirectWithError("../", $response);
             }
         } else if (isset($_SESSION["user"]) && $_SESSION["user"]["loggedin"]) {
             // Authenticated user identification
@@ -132,20 +141,26 @@ class QatarNAS
             $_SESSION["user"]["resp_id"] = $samlRequest->getId();
 
             // Perform the HTTP-Post binding with the LogoutRequest message
-            SamlSdkUtils::redirect($location);
+            \SamlSdkUtils::redirect($location);
         } else {
-            SamlSdkUtils::redirect("../");
+            \SamlSdkUtils::redirect("../");
         }
     }
-
+    /**
+     * PHP Sample SP - Attribute Query Service
+     */
     public static function attributeQueryClient()
     {
         self::init();
-        $samlConfig = new SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
-        $attributeQueryClient = new AttributeQueryClient($samlConfig);
+        require_once(SP_SDK_ROOT."/AttributeQueryClient.php");
+        $samlConfig = new \SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
+        $attributeQueryClient = new \AttributeQueryClient($samlConfig);
+        /**
+         *  Getting/Clearing attributes
+         */
         if (isset($_GET["clear"])) {
             unset($_SESSION["user"]["attrs_query"]);
-            SamlSdkUtils::redirect("../");
+            \SamlSdkUtils::redirect("../");
         } else {
             // Create the SAML AttributeQuery message
             $samlRequest = $attributeQueryClient->generateRequest($_SESSION["user"]["subject"], array());
@@ -154,12 +169,12 @@ class QatarNAS
             $_SESSION["user"]["resp_id"] = $samlRequest->getId();
 
             // Sends the AttributeQuery request via SOAP and get response
-            $response = SamlSdkUtils::soapCall($samlRequest->getRequest(), $samlConfig->getAqUrl());
+            $response = \SamlSdkUtils::soapCall($samlRequest->getRequest(), $samlConfig->getAqUrl());
 
-            if (SamlSdkUtils::startsWith($response, "HTTP") && strpos($response, "<html") === false) {
+            if (\SamlSdkUtils::startsWith($response, "HTTP") && strpos($response, "<html") === false) {
                 try {
                     // Extract the SAML (Authn) Response message
-                    $response = SamlSdkUtils::processSoapMsg($response);
+                    $response = \SamlSdkUtils::processSoapMsg($response);
 
                     // Process the SAML (Authn) Response message
                     $samlCredential = $attributeQueryClient->processResponse($response, $_SESSION["user"]["resp_id"]);
@@ -168,12 +183,12 @@ class QatarNAS
                         $_SESSION["user"]["subject"] = $samlCredential->getNameId();
                         $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
                         $_SESSION["user"]["attrs_query"] = $samlCredential->getAttributes();
-                        SamlSdkUtils::redirect("../");
+                        \SamlSdkUtils::redirect("../");
                     } else {
-                        SamlSdkUtils::redirectWithError("../", "Error attribute query: No succes status find!");
+                        \SamlSdkUtils::redirectWithError("../", "Error attribute query: No succes status find!");
                     }
                 } catch (Exception $e) {
-                    SamlSdkUtils::redirectWithError("../", "Error attribute query: Cannot parse SAML response!<br/>The SAML Response is:<br/>".htmlspecialchars($response, ENT_XML1, 'UTF-8')."<br/><br/> The exception is:<br/>".htmlspecialchars($e, ENT_XML1, 'UTF-8'));
+                    \SamlSdkUtils::redirectWithError("../", "Error attribute query: Cannot parse SAML response!<br/>The SAML Response is:<br/>".htmlspecialchars($response, ENT_XML1, 'UTF-8')."<br/><br/> The exception is:<br/>".htmlspecialchars($e, ENT_XML1, 'UTF-8'));
                 }
             } else {
                 if (strpos($response, "<html") !== false) {
@@ -181,9 +196,9 @@ class QatarNAS
                     if ($pos !== false) {
                         $response = substr($response, $pos, strlen($response) - $pos);
                     }
-                    SamlSdkUtils::redirectWithError("../", $response);
+                    \SamlSdkUtils::redirectWithError("../", $response);
                 } else {
-                    SamlSdkUtils::redirectWithError("../", "Error while getting attributes: ".$response);
+                    \SamlSdkUtils::redirectWithError("../", "Error while getting attributes: ".$response);
                 }
             }
         }

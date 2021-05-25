@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<saml2p:LogoutRequest xmlns:saml2p="urn:oasis:names:tc:SAML:2.0:protocol" 
+Destination="<DESTINATION>"
+ID="<ID>"
+IssueInstant="<ISSUE_INSTANT>" 
+Version="2.0">
+	<saml2:Issuer xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion"><ISSUER></saml2:Issuer>
+	<saml2p:Extensions>
+	<saml2:Attribute xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion"
+		Name="SPLanguage">
+		<saml2:AttributeValue><ATTRIBUTE_SPLANGUAGE></saml2:AttributeValue>
+	</saml2:Attribute>
+	</saml2p:Extensions>
+	<saml2:NameID xmlns:saml2="urn:oasis:names:tc:SAML:2.0:assertion" 
+	Format="urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"><NAME_ID></saml2:NameID>
+	<saml2p:SessionIndex><SESSION_INDEX></saml2p:SessionIndex>
+</saml2p:LogoutRequest>
