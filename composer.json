@@ -19,5 +19,10 @@
             "Applab\\QNas\\": "src/"
         }
     },
-    "minimum-stability": "dev"
-}
+    "minimum-stability": "dev",
+    "scripts": {
+        "post-install-cmd": [
+            "php -r \"copy('src/config.php', 'qnas_config/config.php');\""
+        ]
+    }
+},
