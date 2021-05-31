@@ -3,7 +3,7 @@ namespace Applab\QNas;
 
 class QatarNAS
 {
-    private function init()
+    private static function init()
     {
         $baseDir = dirname(dirname(dirname(dirname(__DIR__))));
         require_once($baseDir."/qnas_config/config.php");
