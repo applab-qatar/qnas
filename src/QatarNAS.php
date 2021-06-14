@@ -72,6 +72,7 @@ class QatarNAS
                         "attributes" => $samlCredential->getAttributes(),
                         "smartcard_pki"=>$SmartcardPKI
                     ];
+                    $smalResponse['attrs_query']=self::attributeQueryClient($request,$smalResponse);
                     return json_encode(['status'=>true,'result'=>$smalResponse]);
                 } else {
                     return json_encode(['status'=>false,'error'=>['message'=>$samlCredential->getStatusMessage()]]);
@@ -159,7 +160,7 @@ class QatarNAS
     /**
      * PHP Sample SP - Attribute Query Service
      */
-    public static function attributeQueryClient()
+    public static function attributeQueryClient(Request $request,$ssoResponse)
     {
         self::init();
         require_once(SP_SDK_ROOT."/AttributeQueryClient.php");
@@ -168,15 +169,17 @@ class QatarNAS
         /**
          *  Getting/Clearing attributes
          */
+        $session=$request->getSession();
         if (isset($_GET["clear"])) {
             unset($_SESSION["user"]["attrs_query"]);
             \SamlSdkUtils::redirect("../");
         } else {
             // Create the SAML AttributeQuery message
-            $samlRequest = $attributeQueryClient->generateRequest($_SESSION["user"]["subject"], array());
+            $samlRequest = $attributeQueryClient->generateRequest($ssoResponse["subject"], array());
 
             // Store the message ID
-            $_SESSION["user"]["resp_id"] = $samlRequest->getId();
+            $session->set('user_resp_id', $samlRequest->getId());
+            //$_SESSION["user"]["resp_id"] = $samlRequest->getId();
 
             // Sends the AttributeQuery request via SOAP and get response
             $response = \SamlSdkUtils::soapCall($samlRequest->getRequest(), $samlConfig->getAqUrl());
@@ -187,18 +190,21 @@ class QatarNAS
                     $response = \SamlSdkUtils::processSoapMsg($response);
 
                     // Process the SAML (Authn) Response message
-                    $samlCredential = $attributeQueryClient->processResponse($response, $_SESSION["user"]["resp_id"]);
+                    $samlCredential = $attributeQueryClient->processResponse($response, $session->get('user_resp_id'));//$_SESSION["user"]["resp_id"]
 
                     if ($samlCredential->isSuccess()) {
-                        $_SESSION["user"]["subject"] = $samlCredential->getNameId();
-                        $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
-                        $_SESSION["user"]["attrs_query"] = $samlCredential->getAttributes();
-                        \SamlSdkUtils::redirect("../");
+                        $userAttr["subject"] = $samlCredential->getNameId();
+                        $userAttr["idp_entity_id"] = $samlCredential->getIdpEntityId();
+                        $userAttr["attrs_query"] = $samlCredential->getAttributes();
+                        return $userAttr;
+                        //\SamlSdkUtils::redirect("../");
                     } else {
-                        \SamlSdkUtils::redirectWithError("../", "Error attribute query: No succes status find!");
+                        return [];
+                        //\SamlSdkUtils::redirectWithError("../", "Error attribute query: No succes status find!");
                     }
                 } catch (Exception $e) {
-                    \SamlSdkUtils::redirectWithError("../", "Error attribute query: Cannot parse SAML response!<br/>The SAML Response is:<br/>".htmlspecialchars($response, ENT_XML1, 'UTF-8')."<br/><br/> The exception is:<br/>".htmlspecialchars($e, ENT_XML1, 'UTF-8'));
+                    return [];
+                    //\SamlSdkUtils::redirectWithError("../", "Error attribute query: Cannot parse SAML response!<br/>The SAML Response is:<br/>".htmlspecialchars($response, ENT_XML1, 'UTF-8')."<br/><br/> The exception is:<br/>".htmlspecialchars($e, ENT_XML1, 'UTF-8'));
                 }
             } else {
                 if (strpos($response, "<html") !== false) {
@@ -206,9 +212,11 @@ class QatarNAS
                     if ($pos !== false) {
                         $response = substr($response, $pos, strlen($response) - $pos);
                     }
-                    \SamlSdkUtils::redirectWithError("../", $response);
+                    return [];
+                    //\SamlSdkUtils::redirectWithError("../", $response);
                 } else {
-                    \SamlSdkUtils::redirectWithError("../", "Error while getting attributes: ".$response);
+                    return [];
+                    //\SamlSdkUtils::redirectWithError("../", "Error while getting attributes: ".$response);
                 }
             }
         }
