@@ -68,7 +68,7 @@ class QatarNAS
 //                        $_SESSION["user"]["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
 //                        $_SESSION["user"]["idpUrl"] = $samlConfig->getIdpBaseUrl();
 //                    }
-                    return json_encode(['status'=>true,'result'=>$samlCredential]);
+                    return ['status'=>true,'result'=>$samlCredential];
                 } else {
                     return json_encode(['status'=>false,'error'=>['message'=>$samlCredential->getStatusMessage()]]);
                     //SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
