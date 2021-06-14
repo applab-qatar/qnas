@@ -1,6 +1,8 @@
 <?php
 namespace Applab\QNas;
 
+use Symfony\Component\HttpFoundation\Request;
+
 class QatarNAS
 {
     private static function init()
@@ -13,7 +15,7 @@ class QatarNAS
     /**
      * PHP Sample SP - SAML authentication request
      */
-    public static function singleSignOnClient($lang,$authMethod = [])
+    public static function singleSignOnClient($lang,$authMethod = [],Request $request )
     {
         self::init();
         require_once(SP_SDK_ROOT."/SingleSignOnClient.php");
@@ -27,13 +29,15 @@ class QatarNAS
         $xmlBase64 = base64_encode($samlRequest->getRequest());
 
         // Store the SAML request ID for response validation
-        $_SESSION["user"]["resp_id"] = $samlRequest->getId();
+        $session = $request->getSession();
+        $session->set('user_resp_id', $samlRequest->getId());
+//        $_SESSION["user"]["resp_id"] = $samlRequest->getId();
         return include('templates/sso.php');
     }
     /**
      * PHP Sample SP - Assertion Consumer Service
      */
-    public static function singleSignOnResponse()
+    public static function singleSignOnResponse(Request $request)
     {
         self::init();
         require_once(SP_SDK_ROOT."/SingleSignOnClient.php");
@@ -47,33 +51,35 @@ class QatarNAS
                 // Create SAML config and SingleSignOnClient instances
                 $samlConfig = new \SamlConfig(CONFIG_ROOT.SP_METADATA_FILE, CONFIG_ROOT.IDP_METADATA_FILE, CONFIG_ROOT.SP_PRIV_KEY_FILE, CONFIG_ROOT.SP_CERT_FILE);
                 $singleSignOnClient = new \SingleSignOnClient($samlConfig);
-
+                $session=$request->getSession();
                 // Process the SAML Response value; verify against the AuthnRequest ID value
-                $samlCredential = $singleSignOnClient->processResponse($resp, $_SESSION["user"]["resp_id"]);
-
-                unset($_SESSION["user"]["resp_id"]);
-
+                $samlCredential = $singleSignOnClient->processResponse($resp, $session->get('user_resp_id'));
+                $session->remove('user_resp_id');
+               // unset($_SESSION["user"]["resp_id"]);
                 // Check if the authentication was successful or not
                 if ($samlCredential->isSuccess()) {
-                    $_SESSION["user"]["loggedin"] = true;
-                    $_SESSION["user"]["subject"] = $samlCredential->getNameId();
-                    $_SESSION["user"]["authn_method"] = $samlCredential->getAuthMethod();
-                    $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
-                    $_SESSION["user"]["attributes"] = $samlCredential->getAttributes();
-                    if ($samlCredential->getAuthMethod() == "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI") {
-                        $_SESSION["user"]["csnToken"] = $samlCredential->getAttributeValue("UserCardSerialNumberToken");
-                        $_SESSION["user"]["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
-                        $_SESSION["user"]["idpUrl"] = $samlConfig->getIdpBaseUrl();
-                    }
-                    SamlSdkUtils::redirect('../');
+//                    $_SESSION["user"]["loggedin"] = true;
+//                    $_SESSION["user"]["subject"] = $samlCredential->getNameId();
+//                    $_SESSION["user"]["authn_method"] = $samlCredential->getAuthMethod();
+//                    $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
+//                    $_SESSION["user"]["attributes"] = $samlCredential->getAttributes();
+//                    if ($samlCredential->getAuthMethod() == "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI") {
+//                        $_SESSION["user"]["csnToken"] = $samlCredential->getAttributeValue("UserCardSerialNumberToken");
+//                        $_SESSION["user"]["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
+//                        $_SESSION["user"]["idpUrl"] = $samlConfig->getIdpBaseUrl();
+//                    }
+                    return json_encode(['status'=>true,'result'=>$samlCredential]);
                 } else {
-                    SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
+                    return json_encode(['status'=>false,'error'=>['message'=>$samlCredential->getStatusMessage()]]);
+                    //SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
                 }
             } catch (Exception $e) {
-                \SamlSdkUtils::redirectWithError('../', $e->getMessage());
+                return json_encode(['status'=>false,'error'=>['message'=>$e->getMessage()]]);
+                //\SamlSdkUtils::redirectWithError('../', $e->getMessage());
             }
         } else {
-            \SamlSdkUtils::redirect('../', "HTTP GET method is not supported");
+            return json_encode(['status'=>false,'error'=>['message'=>"Empty SAMLResponse"]]);
+            //\SamlSdkUtils::redirect('../', "HTTP GET method is not supported");
         }
     }
 
