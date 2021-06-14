@@ -32,7 +32,7 @@ class QatarNAS
         $session = $request->getSession();
         $session->set('user_resp_id', $samlRequest->getId());
 //        $_SESSION["user"]["resp_id"] = $samlRequest->getId();
-        return include('templates/sso.php');
+        return ['form_action_url'=>$samlConfig->getSsoPostUrl(),'SAMLRequest'=>$xmlBase64];//include('templates/sso.php');
     }
     /**
      * PHP Sample SP - Assertion Consumer Service
