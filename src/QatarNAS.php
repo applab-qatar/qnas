@@ -58,17 +58,21 @@ class QatarNAS
                // unset($_SESSION["user"]["resp_id"]);
                 // Check if the authentication was successful or not
                 if ($samlCredential->isSuccess()) {
-//                    $_SESSION["user"]["loggedin"] = true;
-//                    $_SESSION["user"]["subject"] = $samlCredential->getNameId();
-//                    $_SESSION["user"]["authn_method"] = $samlCredential->getAuthMethod();
-//                    $_SESSION["user"]["idp_entity_id"] = $samlCredential->getIdpEntityId();
-//                    $_SESSION["user"]["attributes"] = $samlCredential->getAttributes();
-//                    if ($samlCredential->getAuthMethod() == "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI") {
-//                        $_SESSION["user"]["csnToken"] = $samlCredential->getAttributeValue("UserCardSerialNumberToken");
-//                        $_SESSION["user"]["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
-//                        $_SESSION["user"]["idpUrl"] = $samlConfig->getIdpBaseUrl();
-//                    }
-                    return ['status'=>true,'result'=>json_decode(json_encode($samlCredential),true)];
+                    $SmartcardPKI=[];
+                    if ($samlCredential->getAuthMethod() == "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI") {
+                        $SmartcardPKI["csnToken"] = $samlCredential->getAttributeValue("UserCardSerialNumberToken");
+                        $SmartcardPKI["sloUrl"] = $samlConfig->getSlsRedirectUrl()."-idp?sp=".$samlConfig->getSpEntityId();
+                        $SmartcardPKI["idpUrl"] = $samlConfig->getIdpBaseUrl();
+                    }
+                    $smalResponse=[
+                        "loggedin"=>true,
+                        "subject" => $samlCredential->getNameId(),
+                        "authn_method" => $samlCredential->getAuthMethod(),
+                        "idp_entity_id" => $samlCredential->getIdpEntityId(),
+                        "attributes" => $samlCredential->getAttributes(),
+                        "smartcard_pki"=>$SmartcardPKI
+                    ];
+                    return json_encode(['status'=>true,'result'=>$smalResponse]);
                 } else {
                     return json_encode(['status'=>false,'error'=>['message'=>$samlCredential->getStatusMessage()]]);
                     //SamlSdkUtils::redirectWithError('../', "Not successful login (".$samlCredential->getStatus()."; ".$samlCredential->getStatusMessage().")");
