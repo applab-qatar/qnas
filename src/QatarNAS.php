@@ -29,10 +29,10 @@ class QatarNAS
         $xmlBase64 = base64_encode($samlRequest->getRequest());
 
         // Store the SAML request ID for response validation
-        $session = $request->getSession();
-        $session->set('user_resp_id', $samlRequest->getId());
+        // $session = $request->getSession();
+        // $session->set('user_resp_id', $samlRequest->getId());
 //        $_SESSION["user"]["resp_id"] = $samlRequest->getId();
-        return ['form_action_url'=>$samlConfig->getSsoPostUrl(),'SAMLRequest'=>$xmlBase64];//include('templates/sso.php');
+        return ['form_action_url'=>$samlConfig->getSsoPostUrl(),'SAMLRequest'=>$xmlBase64,'user_resp_id'=>$samlRequest->getId()];//include('templates/sso.php');
     }
     /**
      * PHP Sample SP - Assertion Consumer Service
